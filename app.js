@@ -1,43 +1,37 @@
+// Import Express.js
 const express = require('express');
+
+// Create an Express app
 const app = express();
 
+// Middleware to parse JSON bodies
 app.use(express.json());
 
-const PORT = process.env.PORT || 3000;
-const VERIFY_TOKEN = process.env.VERIFY_TOKEN; // Set this on Render (e.g., 'vibecode')
+// Set port and verify_token
+const port = process.env.PORT || 3000;
+const verifyToken = process.env.VERIFY_TOKEN;
 
-// ==========================================
-// 1. HEALTH CHECK ROUTE
-// ==========================================
-// Visit https://your-app.onrender.com/ in your browser to wake up Render.
+// Route for GET requests
 app.get('/', (req, res) => {
-  res.status(200).send("Server is awake and waiting for Meta.");
-});
+  const { 'hub.mode': mode, 'hub.challenge': challenge, 'hub.verify_token': token } = req.query;
 
-// ==========================================
-// 2. INBOUND WEBHOOK: VERIFICATION ONLY (GET)
-// ==========================================
-app.get('/webhook', (req, res) => {
-  const mode = req.query['hub.mode'];
-  const token = req.query['hub.verify_token'];
-  const challenge = req.query['hub.challenge'];
-
-  console.log("=== WEBHOOK VERIFICATION ATTEMPT ===");
-  console.log(`Received token from Meta: "${token}"`);
-  console.log(`Expected token from Render: "${VERIFY_TOKEN}"`);
-
-  // Check if Meta's request matches your token string
-  if (mode === 'subscribe' && token === VERIFY_TOKEN) {
-    console.log('✅ WEBHOOK VERIFIED SUCCESSFULLY!');
-    // Return the exact challenge string back to Meta as plain text
-    return res.status(200).send(challenge);
+  if (mode === 'subscribe' && token === verifyToken) {
+    console.log('WEBHOOK VERIFIED');
+    res.status(200).send(challenge);
   } else {
-    console.log('❌ VERIFICATION FAILED: Token mismatch.');
-    return res.status(403).send('Verification failed.');
+    res.status(403).end();
   }
 });
 
+// Route for POST requests
+app.post('/', (req, res) => {
+  const timestamp = new Date().toISOString().replace('T', ' ').slice(0, 19);
+  console.log(`\n\nWebhook received ${timestamp}\n`);
+  console.log(JSON.stringify(req.body, null, 2));
+  res.status(200).end();
+});
+
 // Start the server
-app.listen(PORT, () => {
-  console.log(`🚀 Verification server listening on port ${PORT}`);
+app.listen(port, () => {
+  console.log(`\nListening on port ${port}\n`);
 });
